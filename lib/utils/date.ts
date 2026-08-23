@@ -66,3 +66,33 @@ export function formatShortTime(timeStr: string): string {
   const parts = timeStr.split(':');
   return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
 }
+
+/**
+ * Returns the Monday (start) and Sunday (end) date strings (YYYY-MM-DD) for the week containing dateStr.
+ */
+export function getWeekDateRange(dateStr: string): { startOfWeek: string; endOfWeek: string } {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const dayOfWeek = date.getDay(); // 0 is Sun, 1 is Mon, ... 6 is Sat
+
+  // Distance to Monday (if Sunday (0), distance back is 6 days; otherwise dayOfWeek - 1)
+  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+
+  const monday = new Date(date);
+  monday.setDate(date.getDate() - diffToMonday);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+
+  const formatDate = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const da = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${da}`;
+  };
+
+  return {
+    startOfWeek: formatDate(monday),
+    endOfWeek: formatDate(sunday),
+  };
+}

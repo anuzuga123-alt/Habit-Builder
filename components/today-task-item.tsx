@@ -15,8 +15,15 @@ export function TodayTaskItem({ task, onToggleComplete, loading }: TodayTaskItem
   return (
     <div className="flex items-center justify-between p-4 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl transition-colors">
       <div className="space-y-1">
-        <div className="text-xs font-mono text-gray-500 dark:text-neutral-400">
-          {task.scheduled_time}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono text-gray-500 dark:text-neutral-400">
+            {task.scheduled_time}
+          </span>
+          {task.weeklyProgress && (
+            <span className="text-[11px] font-medium text-gray-500 dark:text-neutral-400 border border-gray-200 dark:border-neutral-700 px-1.5 py-0.5 rounded">
+              {task.weeklyProgress.completed} / {task.weeklyProgress.target} completed this week
+            </span>
+          )}
         </div>
         <div className={`text-sm font-semibold transition-colors ${
           isCompleted ? 'line-through text-gray-400 dark:text-neutral-500' : 'text-gray-900 dark:text-neutral-100'

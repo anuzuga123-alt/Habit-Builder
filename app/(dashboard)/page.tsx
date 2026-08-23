@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { TodayScreenClient } from '@/components/today-screen-client';
-import { getFormattedDateString } from '@/lib/utils/date';
+import { getFormattedDateString, getWeekDateRange } from '@/lib/utils/date';
 import { Goal, DailyTask } from '@/lib/types';
 
 export default async function TodayPage() {
@@ -23,6 +23,7 @@ export default async function TodayPage() {
   const displayName = profile?.display_name || user.email?.split('@')[0] || 'User';
 
   const dateStr = getFormattedDateString(new Date(), userTimezone);
+  const { startOfWeek, endOfWeek } = getWeekDateRange(dateStr);
 
   // Fetch active goals
   const { data: goalsData } = await supabase
@@ -32,12 +33,13 @@ export default async function TodayPage() {
     .eq('active', true)
     .is('deleted_at', null);
 
-  // Fetch today's persisted tasks
+  // Fetch current week's persisted tasks for weekly progress calculations
   const { data: tasksData } = await supabase
     .from('daily_tasks')
     .select('*')
     .eq('user_id', user.id)
-    .eq('date', dateStr);
+    .gte('date', startOfWeek)
+    .lte('date', endOfWeek);
 
   return (
     <TodayScreenClient
