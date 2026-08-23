@@ -18,14 +18,17 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- RLS for Profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile"
   ON public.profiles FOR SELECT
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile"
   ON public.profiles FOR INSERT
   WITH CHECK (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile"
   ON public.profiles FOR UPDATE
   USING (auth.uid() = id);
@@ -44,7 +47,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE OR REPLACE TRIGGER on_auth_user_created
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
@@ -75,18 +79,22 @@ CREATE INDEX IF NOT EXISTS goals_active_idx ON public.goals(active);
 -- RLS for Goals
 ALTER TABLE public.goals ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own goals" ON public.goals;
 CREATE POLICY "Users can view own goals"
   ON public.goals FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own goals" ON public.goals;
 CREATE POLICY "Users can insert own goals"
   ON public.goals FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own goals" ON public.goals;
 CREATE POLICY "Users can update own goals"
   ON public.goals FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own goals" ON public.goals;
 CREATE POLICY "Users can delete own goals"
   ON public.goals FOR DELETE
   USING (auth.uid() = user_id);
@@ -114,18 +122,22 @@ CREATE INDEX IF NOT EXISTS daily_tasks_goal_id_idx ON public.daily_tasks(goal_id
 -- RLS for Daily Tasks
 ALTER TABLE public.daily_tasks ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own daily tasks" ON public.daily_tasks;
 CREATE POLICY "Users can view own daily tasks"
   ON public.daily_tasks FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own daily tasks" ON public.daily_tasks;
 CREATE POLICY "Users can insert own daily tasks"
   ON public.daily_tasks FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own daily tasks" ON public.daily_tasks;
 CREATE POLICY "Users can update own daily tasks"
   ON public.daily_tasks FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own daily tasks" ON public.daily_tasks;
 CREATE POLICY "Users can delete own daily tasks"
   ON public.daily_tasks FOR DELETE
   USING (auth.uid() = user_id);
@@ -140,14 +152,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.profiles;
 CREATE TRIGGER update_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_goals_updated_at ON public.goals;
 CREATE TRIGGER update_goals_updated_at
   BEFORE UPDATE ON public.goals
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_daily_tasks_updated_at ON public.daily_tasks;
 CREATE TRIGGER update_daily_tasks_updated_at
   BEFORE UPDATE ON public.daily_tasks
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
