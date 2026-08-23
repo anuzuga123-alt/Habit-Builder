@@ -52,4 +52,8 @@ export interface DerivedTodayTask {
   scheduled_time: string;
   status: TaskStatus;
   completed_at: string | null;
+  weeklyProgress?: {
+    completed: number;
+    target: number;
+  };
 }
