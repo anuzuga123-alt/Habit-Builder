@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Habit-Builder
 
-## Getting Started
+A habit and goal tracking web application built with Next.js (App Router), TypeScript, Tailwind CSS, and Supabase.
 
-First, run the development server:
+## Features
+
+- **Auth & Profiles**: Supabase Authentication with user timezone support.
+- **Goal & Habit Management**: Flexible target frequencies (`every_day`, `selected_days`, `times_per_week`), customizable scheduled times, and completion proof requirements.
+- **Daily Dashboard**: Date-filtered habit checklist, status toggling (complete/skip/pending), and streak tracking.
+- **Reminders & Missed Days**: Automated missed-day backfilling and reminder evaluations logged to database.
+
+## Environment Variables
+
+Copy `.env.example` to `.env.local` and configure the required environment variables:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+CRON_SECRET=your-vercel-cron-secret # Optional: Secures /api/reminders/check endpoint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase public anonymous API key.
+- `CRON_SECRET`: Optional authorization secret used by Vercel Cron to invoke `/api/reminders/check`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Database Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Create a new project in [Supabase](https://supabase.com).
+2. Go to the **SQL Editor** in your Supabase project dashboard.
+3. Paste the contents of `supabase/schema.sql` and execute the SQL query to create tables (`profiles`, `goals`, `daily_tasks`, `reminder_logs`), triggers, functions, indexes, and Row Level Security (RLS) policies.
 
-## Learn More
+## Local Development
 
-To learn more about Next.js, take a look at the following resources:
+Install dependencies:
+```bash
+npm install
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Run the development server:
+```bash
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Run TypeScript type-checking and linting:
+```bash
+npx tsc --noEmit
+npm run lint
+```
 
-## Deploy on Vercel
+Build for production:
+```bash
+npm run build
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deployment on Vercel
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Connect your repository to [Vercel](https://vercel.com).
+2. Configure Environment Variables in project settings:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `CRON_SECRET`
+3. Deploy the project. Vercel will automatically read `vercel.json` and configure Vercel Cron for `/api/reminders/check`.

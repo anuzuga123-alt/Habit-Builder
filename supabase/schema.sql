@@ -194,3 +194,8 @@ DROP POLICY IF EXISTS "Users can insert own reminder logs" ON public.reminder_lo
 CREATE POLICY "Users can insert own reminder logs"
   ON public.reminder_logs FOR INSERT
   WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update own reminder logs" ON public.reminder_logs;
+CREATE POLICY "Users can update own reminder logs"
+  ON public.reminder_logs FOR UPDATE
+  USING (auth.uid() = user_id);
