@@ -35,6 +35,55 @@ export function isGoalScheduledForDate(goal: Goal, dateStr: string): boolean {
  * Derives the daily tasks list for a given date by taking active goals and week's task records.
  * Sorts derived tasks chronologically by scheduled time.
  */
+/**
+ * Calculates the current completion streak (in days) for a goal leading up to or including today.
+ */
+export function calculateGoalStreak(goal: Goal, tasks: DailyTask[], dateStr: string): number {
+  if (!goal.active || goal.deleted_at) return 0;
+
+  const taskMap = new Map<string, DailyTask>();
+  for (const t of tasks) {
+    if (t.goal_id === goal.id) {
+      taskMap.set(t.date, t);
+    }
+  }
+
+  let streak = 0;
+  const currentDate = new Date(dateStr + 'T00:00:00Z');
+
+  // Check today first. If completed today, count it. If pending today, check yesterday without breaking.
+  const todayTask = taskMap.get(dateStr);
+  if (todayTask && todayTask.status === 'completed') {
+    streak++;
+    currentDate.setUTCDate(currentDate.getUTCDate() - 1);
+  } else {
+    // If not completed today, move to yesterday to check previous streak
+    currentDate.setUTCDate(currentDate.getUTCDate() - 1);
+  }
+
+  // Count backwards past days
+  while (true) {
+    const dStr = currentDate.toISOString().split('T')[0];
+
+    // Check if goal was scheduled for this past date
+    if (isGoalScheduledForDate(goal, dStr)) {
+      const task = taskMap.get(dStr);
+      if (task && task.status === 'completed') {
+        streak++;
+      } else {
+        break; // Streak broken on a scheduled day
+      }
+    }
+    // Go back 1 day
+    currentDate.setUTCDate(currentDate.getUTCDate() - 1);
+
+    // Safety limit to avoid infinite loop (e.g. max 365 days)
+    if (streak > 365) break;
+  }
+
+  return streak;
+}
+
 export function deriveDailyTasks(
   goals: Goal[],
   weekTasks: DailyTask[],
@@ -67,6 +116,8 @@ export function deriveDailyTasks(
     const existingTodayTask = todayTaskMap.get(goal.id) || null;
     const completedThisWeek = weeklyCompletedCountMap.get(goal.id) || 0;
 
+    const streak = calculateGoalStreak(goal, weekTasks, dateStr);
+
     if (goal.frequency === 'times_per_week') {
       const target = goal.target_per_week || 1;
       const isTodayCompleted = existingTodayTask?.status === 'completed';
@@ -79,6 +130,8 @@ export function deriveDailyTasks(
           scheduled_time: formatShortTime(goal.scheduled_time),
           status: existingTodayTask ? existingTodayTask.status : 'pending',
           completed_at: existingTodayTask ? existingTodayTask.completed_at : null,
+          proof_url: existingTodayTask ? existingTodayTask.proof_url : null,
+          streak,
           weeklyProgress: {
             completed: completedThisWeek,
             target,
@@ -92,6 +145,8 @@ export function deriveDailyTasks(
         scheduled_time: formatShortTime(goal.scheduled_time),
         status: existingTodayTask ? existingTodayTask.status : 'pending',
         completed_at: existingTodayTask ? existingTodayTask.completed_at : null,
+        proof_url: existingTodayTask ? existingTodayTask.proof_url : null,
+        streak,
       });
     }
   }

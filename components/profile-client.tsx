@@ -28,12 +28,16 @@ export function ProfileClient({ profile, email }: ProfileClientProps) {
       const supabase = createClient();
       const { error } = await supabase
         .from('profiles')
-        .update({
-          display_name: displayName.trim(),
-          timezone: timezone.trim(),
-          coaching_style: coachingStyle,
-        })
-        .eq('id', profile.id);
+        .upsert(
+          {
+            id: profile.id,
+            display_name: displayName.trim(),
+            timezone: timezone.trim(),
+            coaching_style: coachingStyle,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
+        );
 
       if (error) {
         throw error;

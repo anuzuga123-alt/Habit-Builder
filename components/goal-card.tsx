@@ -3,14 +3,15 @@
 import { Goal } from '@/lib/types';
 import Link from 'next/link';
 import { formatShortTime } from '@/lib/utils/date';
-import { Edit2, Power } from 'lucide-react';
+import { Edit2, Power, Trash2 } from 'lucide-react';
 
 interface GoalCardProps {
   goal: Goal;
   onToggleActive: (goalId: string, currentActive: boolean) => Promise<void>;
+  onDeleteGoal: (goalId: string) => Promise<void>;
 }
 
-export function GoalCard({ goal, onToggleActive }: GoalCardProps) {
+export function GoalCard({ goal, onToggleActive, onDeleteGoal }: GoalCardProps) {
   const getFrequencyLabel = () => {
     switch (goal.frequency) {
       case 'every_day':
@@ -71,6 +72,17 @@ export function GoalCard({ goal, onToggleActive }: GoalCardProps) {
             title={goal.active ? 'Deactivate Goal' : 'Activate Goal'}
           >
             <Power className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => {
+              if (confirm(`Are you sure you want to delete "${goal.name}"?`)) {
+                onDeleteGoal(goal.id);
+              }
+            }}
+            className="p-1.5 text-gray-400 hover:text-red-600 dark:text-neutral-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-colors"
+            title="Delete Goal"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
