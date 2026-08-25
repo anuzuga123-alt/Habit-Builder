@@ -13,9 +13,10 @@ interface GoalsListClientProps {
 
 export function GoalsListClient({ initialGoals }: GoalsListClientProps) {
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
-  const supabase = createClient();
 
   const handleToggleActive = async (goalId: string, currentActive: boolean) => {
+    const supabase = createClient();
+
     // Optimistic update
     setGoals((prev) =>
       prev.map((g) => (g.id === goalId ? { ...g, active: !currentActive } : g))
