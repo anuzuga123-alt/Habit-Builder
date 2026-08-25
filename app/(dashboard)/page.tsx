@@ -45,6 +45,7 @@ export default async function TodayPage() {
       dateStr={dateStr}
       displayName={displayName}
       userId={user.id}
+      userTimezone={userTimezone}
     />
   );
 }

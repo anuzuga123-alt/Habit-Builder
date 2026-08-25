@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Goal, DailyTask, DerivedTodayTask } from '@/lib/types';
-import { deriveDailyTasks } from '@/lib/utils/tasks';
+import { deriveDailyTasks, getMissingPastTaskPayloads } from '@/lib/utils/tasks';
+import { evaluateGoalReminders, ActiveReminder } from '@/lib/utils/reminders';
 import { TodayTaskItem } from '@/components/today-task-item';
 import { createClient } from '@/lib/supabase/client';
 import { formatDisplayDate } from '@/lib/utils/date';
 import Link from 'next/link';
+import { Bell } from 'lucide-react';
 
 interface TodayScreenClientProps {
   goals: Goal[];
@@ -14,6 +16,7 @@ interface TodayScreenClientProps {
   dateStr: string;
   displayName: string;
   userId: string;
+  userTimezone?: string;
 }
 
 export function TodayScreenClient({
@@ -22,6 +25,7 @@ export function TodayScreenClient({
   dateStr,
   displayName,
   userId,
+  userTimezone = 'UTC',
 }: TodayScreenClientProps) {
   const [persistedTasks, setPersistedTasks] = useState<DailyTask[]>(initialPersistedTasks);
   const [loadingTaskId, setLoadingTaskId] = useState<string | null>(null);
@@ -29,6 +33,43 @@ export function TodayScreenClient({
   // Proof Modal State
   const [proofModalTask, setProofModalTask] = useState<DerivedTodayTask | null>(null);
   const [proofUrlInput, setProofUrlInput] = useState('');
+
+  // Detect missed days on mount and sync to daily_tasks
+  useEffect(() => {
+    const missingPayloads = getMissingPastTaskPayloads(goals, persistedTasks, dateStr);
+    if (missingPayloads.length === 0) return;
+
+    const syncMissedTasks = async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('daily_tasks')
+          .upsert(missingPayloads, { onConflict: 'goal_id,date' })
+          .select('*');
+
+        if (!error && data) {
+          setPersistedTasks((prev) => {
+            const taskMap = new Map(prev.map((t) => [`${t.goal_id}_${t.date}`, t]));
+            for (const t of data as DailyTask[]) {
+              taskMap.set(`${t.goal_id}_${t.date}`, t);
+            }
+            return Array.from(taskMap.values());
+          });
+        }
+      } catch (err) {
+        console.error('Error syncing missed past tasks:', err);
+      }
+    };
+
+    syncMissedTasks();
+  }, [goals, dateStr, persistedTasks]);
+
+  const activeReminders: ActiveReminder[] = evaluateGoalReminders(
+    goals,
+    persistedTasks,
+    dateStr,
+    userTimezone
+  );
 
   const derivedTasks = deriveDailyTasks(goals, persistedTasks, dateStr);
 
@@ -121,6 +162,24 @@ export function TodayScreenClient({
           {completedCount} / {totalCount} completed
         </p>
       </div>
+
+      {/* Active Reminders Banner */}
+      {activeReminders.length > 0 && (
+        <div className="space-y-2">
+          {activeReminders.map((rem) => (
+            <div
+              key={rem.goalId}
+              className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-xl flex items-start gap-2.5 text-xs text-blue-900 dark:text-blue-200"
+            >
+              <Bell className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold">{rem.goalName}: </span>
+                <span>{rem.message}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Today's Tasks List */}
       {derivedTasks.length === 0 ? (

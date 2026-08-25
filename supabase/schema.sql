@@ -166,3 +166,31 @@ DROP TRIGGER IF EXISTS update_daily_tasks_updated_at ON public.daily_tasks;
 CREATE TRIGGER update_daily_tasks_updated_at
   BEFORE UPDATE ON public.daily_tasks
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+-- 4. REMINDER LOGS TABLE
+CREATE TABLE IF NOT EXISTS public.reminder_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  goal_id UUID REFERENCES public.goals(id) ON DELETE CASCADE NOT NULL,
+  task_date DATE NOT NULL,
+  reminder_type TEXT DEFAULT 'scheduled' NOT NULL,
+  sent_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  CONSTRAINT reminder_logs_goal_date_type_unique UNIQUE (goal_id, task_date, reminder_type)
+);
+
+CREATE INDEX IF NOT EXISTS reminder_logs_user_date_idx ON public.reminder_logs(user_id, task_date);
+
+-- RLS for Reminder Logs
+ALTER TABLE public.reminder_logs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own reminder logs" ON public.reminder_logs;
+CREATE POLICY "Users can view own reminder logs"
+  ON public.reminder_logs FOR SELECT
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own reminder logs" ON public.reminder_logs;
+CREATE POLICY "Users can insert own reminder logs"
+  ON public.reminder_logs FOR INSERT
+  WITH CHECK (auth.uid() = user_id);

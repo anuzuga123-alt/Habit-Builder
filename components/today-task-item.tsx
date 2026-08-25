@@ -61,6 +61,19 @@ export function TodayTaskItem({ task, onToggleComplete, onSkipTask, loading }: T
             </a>
           </div>
         )}
+        {task.consecutiveMissMessage && !isCompleted && !isSkipped && (
+          <div
+            className={`text-xs font-medium px-2 py-1 rounded border mt-1.5 flex items-center gap-1.5 ${
+              (task.consecutiveMisses || 0) >= 3
+                ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:border-red-900 dark:text-red-300'
+                : (task.consecutiveMisses || 0) === 2
+                ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:border-amber-900 dark:text-amber-300'
+                : 'bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-950/40 dark:border-orange-900 dark:text-orange-300'
+            }`}
+          >
+            <span>{task.consecutiveMissMessage}</span>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-1">
