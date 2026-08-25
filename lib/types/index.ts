@@ -54,6 +54,8 @@ export interface DerivedTodayTask {
   completed_at: string | null;
   proof_url?: string | null;
   streak?: number;
+  consecutiveMisses?: number;
+  consecutiveMissMessage?: string | null;
   weeklyProgress?: {
     completed: number;
     target: number;
