@@ -36,8 +36,26 @@ export function GoalsListClient({ initialGoals }: GoalsListClientProps) {
     }
   };
 
-  const activeGoals = goals.filter((g) => g.active);
-  const inactiveGoals = goals.filter((g) => !g.active);
+  const handleDeleteGoal = async (goalId: string) => {
+    const supabase = createClient();
+
+    const previousGoals = [...goals];
+    // Optimistic delete (soft delete by setting deleted_at or removing from UI)
+    setGoals((prev) => prev.filter((g) => g.id !== goalId));
+
+    const { error } = await supabase
+      .from('goals')
+      .update({ deleted_at: new Date().toISOString(), active: false })
+      .eq('id', goalId);
+
+    if (error) {
+      setGoals(previousGoals);
+      alert('Failed to delete goal.');
+    }
+  };
+
+  const activeGoals = goals.filter((g) => g.active && !g.deleted_at);
+  const inactiveGoals = goals.filter((g) => !g.active && !g.deleted_at);
 
   return (
     <div className="space-y-6">
@@ -84,6 +102,7 @@ export function GoalsListClient({ initialGoals }: GoalsListClientProps) {
                     key={goal.id}
                     goal={goal}
                     onToggleActive={handleToggleActive}
+                    onDeleteGoal={handleDeleteGoal}
                   />
                 ))}
               </div>
@@ -101,6 +120,7 @@ export function GoalsListClient({ initialGoals }: GoalsListClientProps) {
                     key={goal.id}
                     goal={goal}
                     onToggleActive={handleToggleActive}
+                    onDeleteGoal={handleDeleteGoal}
                   />
                 ))}
               </div>
