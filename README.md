@@ -16,12 +16,14 @@ Copy `.env.example` to `.env.local` and configure the required environment varia
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 CRON_SECRET=your-vercel-cron-secret # Optional: Secures /api/reminders/check endpoint
 ```
 
-- `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL.
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase public anonymous API key.
-- `CRON_SECRET`: Optional authorization secret used by Vercel Cron to invoke `/api/reminders/check`.
+- `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL (Public client-side variable).
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase public anonymous API key (Public client-side variable).
+- `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key (Server-only secret required for automated cron execution to check reminders across users). **Do NOT expose as a public variable.**
+- `CRON_SECRET`: Optional authorization secret used by Vercel Cron to invoke `/api/reminders/check` securely.
 
 ## Database Setup
 
@@ -58,5 +60,6 @@ npm run build
 2. Configure Environment Variables in project settings:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `CRON_SECRET`
+   - `SUPABASE_SERVICE_ROLE_KEY` (Server-only secret)
+   - `CRON_SECRET` (Optional/Recommended)
 3. Deploy the project. Vercel will automatically read `vercel.json` and configure Vercel Cron for `/api/reminders/check`.
