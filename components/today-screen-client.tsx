@@ -25,7 +25,6 @@ export function TodayScreenClient({
 }: TodayScreenClientProps) {
   const [persistedTasks, setPersistedTasks] = useState<DailyTask[]>(initialPersistedTasks);
   const [loadingTaskId, setLoadingTaskId] = useState<string | null>(null);
-  const supabase = createClient();
 
   const derivedTasks = deriveDailyTasks(goals, persistedTasks, dateStr);
 
@@ -41,6 +40,7 @@ export function TodayScreenClient({
     const nowIso = isCurrentlyCompleted ? null : new Date().toISOString();
 
     try {
+      const supabase = createClient();
       const payload = {
         user_id: userId,
         goal_id: goalId,

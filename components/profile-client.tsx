@@ -12,7 +12,6 @@ interface ProfileClientProps {
 
 export function ProfileClient({ profile, email }: ProfileClientProps) {
   const router = useRouter();
-  const supabase = createClient();
 
   const [displayName, setDisplayName] = useState(profile.display_name || '');
   const [timezone, setTimezone] = useState(profile.timezone || 'UTC');
@@ -26,6 +25,7 @@ export function ProfileClient({ profile, email }: ProfileClientProps) {
     setLoading(true);
 
     try {
+      const supabase = createClient();
       const { error } = await supabase
         .from('profiles')
         .update({

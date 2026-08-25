@@ -17,12 +17,14 @@ export default function SignupPage() {
     }
   });
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setMessage(null);
     setLoading(true);
 
     try {
@@ -41,8 +43,12 @@ export default function SignupPage() {
       if (signUpError) {
         setError(signUpError.message);
       } else if (data?.user) {
-        router.push('/');
-        router.refresh();
+        if (data.session) {
+          router.push('/');
+          router.refresh();
+        } else {
+          setMessage('Account created! Please check your email to confirm your account before signing in.');
+        }
       }
     } catch {
       setError('An unexpected error occurred. Please try again.');
@@ -66,6 +72,12 @@ export default function SignupPage() {
         {error && (
           <div className="p-3 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg dark:bg-red-950/30 dark:border-red-800 dark:text-red-400">
             {error}
+          </div>
+        )}
+
+        {message && (
+          <div className="p-3 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg dark:bg-green-950/30 dark:border-green-800 dark:text-green-400">
+            {message}
           </div>
         )}
 

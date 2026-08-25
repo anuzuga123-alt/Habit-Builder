@@ -22,7 +22,6 @@ const ALL_DAYS: { code: DayOfWeek; label: string }[] = [
 
 export function GoalForm({ initialGoal, userId }: GoalFormProps) {
   const router = useRouter();
-  const supabase = createClient();
 
   const [name, setName] = useState(initialGoal?.name || '');
   const [description, setDescription] = useState(initialGoal?.description || '');
@@ -78,6 +77,7 @@ export function GoalForm({ initialGoal, userId }: GoalFormProps) {
     };
 
     try {
+      const supabase = createClient();
       if (initialGoal) {
         const { error: updateErr } = await supabase
           .from('goals')
