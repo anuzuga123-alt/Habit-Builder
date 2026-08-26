@@ -8,7 +8,7 @@ import { TodayTaskItem } from '@/components/today-task-item';
 import { createClient } from '@/lib/supabase/client';
 import { formatDisplayDate } from '@/lib/utils/date';
 import Link from 'next/link';
-import { Bell } from 'lucide-react';
+import { Bell, X } from 'lucide-react';
 
 interface TodayScreenClientProps {
   goals: Goal[];
@@ -75,6 +75,7 @@ export function TodayScreenClient({
 
   const completedCount = derivedTasks.filter((t) => t.status === 'completed').length;
   const totalCount = derivedTasks.length;
+  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   const saveTaskStatus = async (
     task: DerivedTodayTask,
@@ -149,18 +150,30 @@ export function TodayScreenClient({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 pb-12">
       {/* Header section */}
-      <div className="space-y-1">
-        <div className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-neutral-400">
+      <div className="space-y-1.5">
+        <div className="text-xs font-mono font-semibold uppercase tracking-wider text-gray-500 dark:text-neutral-400">
           TODAY • {formatDisplayDate(dateStr)}
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-neutral-100">
-          Good morning, {displayName}
-        </h1>
-        <p className="text-sm font-medium text-gray-600 dark:text-neutral-400 pt-1">
-          {completedCount} / {totalCount} completed
-        </p>
+        <div className="flex items-baseline justify-between gap-4 flex-wrap">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-neutral-100">
+            Good morning, {displayName}
+          </h1>
+          <span className="text-xs font-mono text-gray-500 dark:text-neutral-400 font-medium">
+            {completedCount} of {totalCount} completed ({progressPercent}%)
+          </span>
+        </div>
+
+        {/* Minimal progress bar indicator */}
+        {totalCount > 0 && (
+          <div className="w-full bg-gray-200 dark:bg-neutral-800 rounded-full h-1.5 overflow-hidden mt-1">
+            <div
+              className="bg-neutral-900 dark:bg-neutral-100 h-1.5 rounded-full transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Active Reminders Banner */}
@@ -169,10 +182,10 @@ export function TodayScreenClient({
           {activeReminders.map((rem) => (
             <div
               key={rem.goalId}
-              className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-xl flex items-start gap-2.5 text-xs text-blue-900 dark:text-blue-200"
+              className="p-3.5 bg-blue-50/80 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/60 rounded-xl flex items-start gap-3 text-xs text-blue-900 dark:text-blue-200"
             >
               <Bell className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-              <div>
+              <div className="flex-1">
                 <span className="font-semibold">{rem.goalName}: </span>
                 <span>{rem.message}</span>
               </div>
@@ -183,19 +196,22 @@ export function TodayScreenClient({
 
       {/* Today's Tasks List */}
       {derivedTasks.length === 0 ? (
-        <div className="text-center py-12 border border-dashed border-gray-300 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-800/50">
-          <p className="text-sm text-gray-600 dark:text-neutral-400">
+        <div className="text-center py-12 px-4 border border-dashed border-gray-300 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-800/40">
+          <p className="text-sm font-medium text-gray-700 dark:text-neutral-300">
             No habits scheduled for today.
+          </p>
+          <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">
+            Rest day or time to configure active goals.
           </p>
           <Link
             href="/goals"
-            className="mt-3 inline-block text-xs font-medium text-neutral-900 dark:text-neutral-100 underline hover:no-underline"
+            className="mt-4 inline-block px-4 py-2 text-xs font-semibold text-white bg-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 rounded-lg hover:opacity-90 transition-opacity"
           >
             Manage active goals
           </Link>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {derivedTasks.map((task) => (
             <TodayTaskItem
               key={task.goal.id}
@@ -210,35 +226,46 @@ export function TodayScreenClient({
 
       {/* Proof Submission Modal */}
       {proofModalTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm bg-white dark:bg-neutral-800 p-6 rounded-xl border border-gray-200 dark:border-neutral-700 space-y-4">
-            <div>
-              <h3 className="text-base font-semibold text-gray-900 dark:text-neutral-100">
-                Proof Required
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">
-                This habit requires completion proof. Enter a link or image URL for &quot;{proofModalTask.goal.name}&quot;.
-              </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm bg-white dark:bg-neutral-800 p-6 rounded-2xl border border-gray-200 dark:border-neutral-700 shadow-xl space-y-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900 dark:text-neutral-100">
+                  Proof Required
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">
+                  Enter a link or proof URL for &quot;{proofModalTask.goal.name}&quot;.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setProofModalTask(null)}
+                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-neutral-300 rounded-md"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <form onSubmit={handleSubmitProof} className="space-y-4">
+
+            <form onSubmit={handleSubmitProof} className="space-y-4 pt-1">
               <input
                 type="url"
+                required
                 placeholder="https://example.com/proof.jpg"
                 value={proofUrlInput}
                 onChange={(e) => setProofUrlInput(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-neutral-700 rounded-md bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-neutral-100"
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-neutral-100"
               />
-              <div className="flex items-center justify-end space-x-2 pt-2">
+              <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setProofModalTask(null)}
-                  className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-neutral-300 border border-gray-300 dark:border-neutral-700 rounded-md hover:bg-gray-50 dark:hover:bg-neutral-700"
+                  className="min-h-[44px] px-4 py-2 text-xs font-semibold text-gray-700 dark:text-neutral-300 border border-gray-300 dark:border-neutral-700 rounded-lg hover:bg-gray-50 dark:hover:bg-neutral-700"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-3 py-1.5 text-xs font-medium text-white bg-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 rounded-md"
+                  className="min-h-[44px] px-4 py-2 text-xs font-semibold text-white bg-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 rounded-lg"
                 >
                   Submit & Complete
                 </button>
