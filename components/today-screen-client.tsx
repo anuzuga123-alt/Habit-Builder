@@ -5,10 +5,13 @@ import { Goal, DailyTask, DerivedTodayTask } from '@/lib/types';
 import { deriveDailyTasks, getMissingPastTaskPayloads } from '@/lib/utils/tasks';
 import { evaluateGoalReminders, ActiveReminder } from '@/lib/utils/reminders';
 import { TodayTaskItem } from '@/components/today-task-item';
+import { HabitAlarmsControl } from '@/components/habit-alarms-control';
+import { playHabitAlarmSound } from '@/lib/utils/alarm-sound';
+import { triggerHabitBrowserNotification } from '@/lib/utils/notifications';
 import { createClient } from '@/lib/supabase/client';
 import { formatDisplayDate } from '@/lib/utils/date';
 import Link from 'next/link';
-import { Bell, X } from 'lucide-react';
+import { Bell, Check, X, Volume2 } from 'lucide-react';
 
 interface TodayScreenClientProps {
   goals: Goal[];
@@ -96,11 +99,51 @@ export function TodayScreenClient({
     userTimezone
   );
 
+  const [dismissedReminders, setDismissedReminders] = useState<Set<string>>(new Set());
+  const previousActiveRemindersRef = useRef<ActiveReminder[]>([]);
+
+  // Trigger web audio alarm & browser notifications when a new active reminder is evaluated
+  useEffect(() => {
+    if (activeReminders.length > 0) {
+      const prevKeys = new Set(
+        previousActiveRemindersRef.current.map((r) => `${r.goalId}_${r.reminderType}`)
+      );
+      let isNewReminderTriggered = false;
+
+      for (const rem of activeReminders) {
+        const key = `${rem.goalId}_${rem.reminderType}`;
+        if (!prevKeys.has(key)) {
+          isNewReminderTriggered = true;
+          // Trigger browser notification if permitted
+          triggerHabitBrowserNotification({
+            goalId: rem.goalId,
+            goalName: rem.goalName,
+            taskDate: rem.taskDate,
+            scheduledTime: rem.scheduledTime,
+            reminderType: rem.reminderType,
+            message: rem.message,
+          });
+        }
+      }
+
+      if (isNewReminderTriggered) {
+        playHabitAlarmSound();
+      }
+    }
+
+    previousActiveRemindersRef.current = activeReminders;
+  }, [activeReminders]);
+
+  const visibleReminders = activeReminders.filter((rem) => !dismissedReminders.has(rem.goalId));
+
   const derivedTasks = deriveDailyTasks(goals, persistedTasks, dateStr);
 
   const completedCount = derivedTasks.filter((t) => t.status === 'completed').length;
   const totalCount = derivedTasks.length;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  const [pendingGoalIds, setPendingGoalIds] = useState<Set<string>>(new Set());
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const saveTaskStatus = async (
     task: DerivedTodayTask,
@@ -108,9 +151,35 @@ export function TodayScreenClient({
     proofUrl?: string | null
   ) => {
     const goalId = task.goal.id;
-    setLoadingTaskId(goalId);
+
+    // Prevent double submission for the same goal while persistence is in flight
+    if (pendingGoalIds.has(goalId)) return;
+
+    setPendingGoalIds((prev) => new Set(prev).add(goalId));
+    setErrorMessage(null);
 
     const nowIso = newStatus === 'completed' ? new Date().toISOString() : null;
+    const previousTasks = [...persistedTasks];
+
+    // Optimistically update local state immediately
+    const optimisticTask: DailyTask = {
+      id: task.taskRecord?.id || `temp_${goalId}_${dateStr}`,
+      user_id: userId,
+      goal_id: goalId,
+      date: dateStr,
+      scheduled_time: task.goal.scheduled_time,
+      status: newStatus,
+      completed_at: nowIso,
+      notes: task.taskRecord?.notes || null,
+      proof_url: newStatus === 'completed' ? (proofUrl ?? task.proof_url ?? null) : null,
+      created_at: task.taskRecord?.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    setPersistedTasks((prev) => {
+      const filtered = prev.filter((t) => !(t.goal_id === goalId && t.date === dateStr));
+      return [...filtered, optimisticTask];
+    });
 
     try {
       const supabase = createClient();
@@ -132,17 +201,25 @@ export function TodayScreenClient({
 
       if (error) {
         console.error('Error saving task status:', error);
-        alert('Failed to update task completion status.');
+        // Revert to previous state
+        setPersistedTasks(previousTasks);
+        setErrorMessage(`Failed to update task status for "${task.goal.name}". Changes reverted.`);
       } else if (data) {
         setPersistedTasks((prev) => {
-          const filtered = prev.filter((t) => t.goal_id !== goalId || t.date !== dateStr);
+          const filtered = prev.filter((t) => !(t.goal_id === goalId && t.date === dateStr));
           return [...filtered, data as DailyTask];
         });
       }
     } catch (err) {
       console.error('Unexpected error toggling task status:', err);
+      setPersistedTasks(previousTasks);
+      setErrorMessage(`Unexpected error updating task. Changes reverted.`);
     } finally {
-      setLoadingTaskId(null);
+      setPendingGoalIds((prev) => {
+        const next = new Set(prev);
+        next.delete(goalId);
+        return next;
+      });
     }
   };
 
@@ -176,6 +253,19 @@ export function TodayScreenClient({
 
   return (
     <div className="space-y-6 pb-12">
+      {/* Global error notification banner */}
+      {errorMessage && (
+        <div className="p-3 text-xs bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:border-red-900 dark:text-red-300 rounded-xl flex items-center justify-between">
+          <span>{errorMessage}</span>
+          <button
+            onClick={() => setErrorMessage(null)}
+            className="text-red-500 hover:text-red-700 dark:hover:text-red-200 p-0.5"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Header section */}
       <div className="space-y-1.5">
         <div className="text-xs font-mono font-semibold uppercase tracking-wider text-gray-500 dark:text-neutral-400">
@@ -185,9 +275,12 @@ export function TodayScreenClient({
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-neutral-100">
             Good morning, {displayName}
           </h1>
-          <span className="text-xs font-mono text-gray-500 dark:text-neutral-400 font-medium">
-            {completedCount} of {totalCount} completed ({progressPercent}%)
-          </span>
+          <div className="flex items-center gap-3">
+            <HabitAlarmsControl compact />
+            <span className="text-xs font-mono text-gray-500 dark:text-neutral-400 font-medium">
+              {completedCount} of {totalCount} completed ({progressPercent}%)
+            </span>
+          </div>
         </div>
 
         {/* Minimal progress bar indicator */}
@@ -201,21 +294,72 @@ export function TodayScreenClient({
         )}
       </div>
 
-      {/* Active Reminders Banner */}
-      {activeReminders.length > 0 && (
-        <div className="space-y-2">
-          {activeReminders.map((rem) => (
-            <div
-              key={rem.goalId}
-              className="p-3.5 bg-blue-50/80 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/60 rounded-xl flex items-start gap-3 text-xs text-blue-900 dark:text-blue-200"
-            >
-              <Bell className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <span className="font-semibold">{rem.goalName}: </span>
-                <span>{rem.message}</span>
+      {/* Active Habit Alarm Cards */}
+      {visibleReminders.length > 0 && (
+        <div className="space-y-3">
+          {visibleReminders.map((rem) => {
+            const matchingTask = derivedTasks.find((t) => t.goal.id === rem.goalId);
+            return (
+              <div
+                key={rem.goalId}
+                className="p-4 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-300/80 dark:border-amber-800 rounded-xl shadow-xs space-y-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-amber-500/15 text-amber-700 dark:text-amber-300 rounded-lg shrink-0 mt-0.5">
+                      <Bell className="w-5 h-5 text-amber-600 dark:text-amber-400 animate-pulse" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-amber-900 dark:text-amber-200 uppercase tracking-wider font-mono">
+                          Habit Alarm • {rem.scheduledTime}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-bold text-gray-900 dark:text-neutral-100">
+                        {rem.goalName}
+                      </h3>
+                      <p className="text-xs text-amber-900/80 dark:text-amber-200/80 font-medium">
+                        Time for your habit: {rem.message}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setDismissedReminders((prev) => new Set(prev).add(rem.goalId))}
+                    className="p-1.5 text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 hover:bg-amber-200/50 dark:hover:bg-amber-900/50 rounded-md transition-colors shrink-0"
+                    title="Dismiss alarm"
+                    aria-label="Dismiss alarm"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 border-t border-amber-200/60 dark:border-amber-900/60">
+                  <button
+                    type="button"
+                    onClick={() => playHabitAlarmSound()}
+                    className="flex items-center gap-1 text-[11px] font-medium text-amber-800 dark:text-amber-300 hover:underline"
+                  >
+                    <Volume2 className="w-3.5 h-3.5" />
+                    <span>Play chime</span>
+                  </button>
+
+                  {matchingTask && matchingTask.status !== 'completed' && (
+                    <button
+                      type="button"
+                      disabled={pendingGoalIds.has(rem.goalId)}
+                      onClick={() => handleToggleComplete(matchingTask)}
+                      className="min-h-[44px] px-4 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <Check className="w-4 h-4 stroke-[2.5]" />
+                      <span>Complete Now</span>
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -243,7 +387,7 @@ export function TodayScreenClient({
               task={task}
               onToggleComplete={handleToggleComplete}
               onSkipTask={handleSkipTask}
-              loading={loadingTaskId === task.goal.id}
+              loading={pendingGoalIds.has(task.goal.id)}
             />
           ))}
         </div>
