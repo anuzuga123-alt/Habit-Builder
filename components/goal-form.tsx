@@ -33,6 +33,7 @@ export function GoalForm({ initialGoal, userId }: GoalFormProps) {
   const [reminderEnabled, setReminderEnabled] = useState(initialGoal?.reminder_enabled || false);
   const [reminderMinutesBefore, setReminderMinutesBefore] = useState(initialGoal?.reminder_minutes_before || 15);
   const [proofRequired, setProofRequired] = useState(initialGoal?.proof_required || false);
+  const [showAdvanced, setShowAdvanced] = useState(Boolean(initialGoal?.description || initialGoal?.duration_target || initialGoal?.proof_required));
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -93,7 +94,7 @@ export function GoalForm({ initialGoal, userId }: GoalFormProps) {
         if (insertErr) throw insertErr;
       }
 
-      router.push('/goals');
+      router.push('/');
       router.refresh();
     } catch (err: unknown) {
       const errorObj = err as { message?: string };
@@ -122,20 +123,6 @@ export function GoalForm({ initialGoal, userId }: GoalFormProps) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Morning Workout"
-          className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-neutral-700 rounded-md bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-neutral-100"
-        />
-      </div>
-
-      {/* Description */}
-      <div>
-        <label className="block text-xs font-medium text-gray-700 dark:text-neutral-300 mb-1">
-          Description (Optional)
-        </label>
-        <textarea
-          rows={2}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="e.g. 30 minutes cardio + stretch"
           className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-neutral-700 rounded-md bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-neutral-100"
         />
       </div>
@@ -215,21 +202,7 @@ export function GoalForm({ initialGoal, userId }: GoalFormProps) {
         />
       </div>
 
-      {/* Optional Target/Duration */}
-      <div>
-        <label className="block text-xs font-medium text-gray-700 dark:text-neutral-300 mb-1">
-          Duration / Target (Optional)
-        </label>
-        <input
-          type="text"
-          value={durationTarget}
-          onChange={(e) => setDurationTarget(e.target.value)}
-          placeholder="e.g. 30 mins or 10 pages"
-          className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-neutral-700 rounded-md bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-neutral-100"
-        />
-      </div>
-
-      {/* Options: Reminder & Proof */}
+      {/* Reminder Option */}
       <div className="border-t border-gray-200 dark:border-neutral-800 pt-4 space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-xs font-medium text-gray-700 dark:text-neutral-300">
@@ -239,7 +212,7 @@ export function GoalForm({ initialGoal, userId }: GoalFormProps) {
             type="checkbox"
             checked={reminderEnabled}
             onChange={(e) => setReminderEnabled(e.target.checked)}
-            className="rounded border-gray-300 dark:border-neutral-700 text-neutral-900 focus:ring-neutral-900 h-4 w-4"
+            className="rounded border-gray-300 dark:border-neutral-700 text-neutral-900 focus:ring-neutral-900 h-4 w-4 cursor-pointer"
           />
         </div>
 
@@ -257,18 +230,59 @@ export function GoalForm({ initialGoal, userId }: GoalFormProps) {
             />
           </div>
         )}
+      </div>
 
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-medium text-gray-700 dark:text-neutral-300">
-            Require Photo Proof (Future)
-          </label>
-          <input
-            type="checkbox"
-            checked={proofRequired}
-            onChange={(e) => setProofRequired(e.target.checked)}
-            className="rounded border-gray-300 dark:border-neutral-700 text-neutral-900 focus:ring-neutral-900 h-4 w-4"
-          />
-        </div>
+      {/* Advanced / Optional Fields Toggle */}
+      <div className="border-t border-gray-200 dark:border-neutral-800 pt-3">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="text-xs font-medium text-gray-500 hover:text-gray-800 dark:text-neutral-400 dark:hover:text-neutral-200 transition-colors"
+        >
+          {showAdvanced ? '− Hide optional details' : '+ Show optional details (Description, Target, Proof)'}
+        </button>
+
+        {showAdvanced && (
+          <div className="mt-4 space-y-4 pt-2">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-neutral-300 mb-1">
+                Description (Optional)
+              </label>
+              <textarea
+                rows={2}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g. 30 minutes cardio + stretch"
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-neutral-700 rounded-md bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-neutral-100"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-neutral-300 mb-1">
+                Duration / Target (Optional)
+              </label>
+              <input
+                type="text"
+                value={durationTarget}
+                onChange={(e) => setDurationTarget(e.target.value)}
+                placeholder="e.g. 30 mins or 10 pages"
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-neutral-700 rounded-md bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-neutral-100"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-gray-700 dark:text-neutral-300">
+                Require Photo Proof
+              </label>
+              <input
+                type="checkbox"
+                checked={proofRequired}
+                onChange={(e) => setProofRequired(e.target.checked)}
+                className="rounded border-gray-300 dark:border-neutral-700 text-neutral-900 focus:ring-neutral-900 h-4 w-4 cursor-pointer"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Actions */}
