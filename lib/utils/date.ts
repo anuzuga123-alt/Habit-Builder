@@ -50,12 +50,29 @@ export function formatDisplayDate(dateStr: string): string {
 }
 
 /**
+ * Fast UTC date string formatter (YYYY-MM-DD) avoiding full ISO string allocations.
+ */
+export function formatUTCDateStr(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = date.getUTCMonth() + 1;
+  const d = date.getUTCDate();
+  return `${y}-${m < 10 ? '0' + m : m}-${d < 10 ? '0' + d : d}`;
+}
+
+/**
  * Returns the short day code ('mon', 'tue', etc.) for a date string 'YYYY-MM-DD'
+ * Uses Sakamoto's algorithm for zero-allocation O(1) day-of-week calculation.
  */
 export function getDayOfWeekFromDateString(dateStr: string): DayOfWeek {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  return DAYS_MAP[date.getDay()];
+  const year = Number(dateStr.slice(0, 4));
+  const month = Number(dateStr.slice(5, 7));
+  const day = Number(dateStr.slice(8, 10));
+
+  let y = year;
+  const t = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
+  if (month < 3) y -= 1;
+  const dayNum = Math.floor(y + y / 4 - y / 100 + y / 400 + t[month - 1] + day) % 7;
+  return DAYS_MAP[dayNum];
 }
 
 /**

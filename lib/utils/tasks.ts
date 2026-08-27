@@ -1,5 +1,5 @@
 import { Goal, DailyTask, DerivedTodayTask } from '../types';
-import { getDayOfWeekFromDateString, formatShortTime, getWeekDateRange } from './date';
+import { getDayOfWeekFromDateString, formatShortTime, getWeekDateRange, formatUTCDateStr } from './date';
 
 /**
  * Checks whether a given Goal is scheduled to be performed on a specific date string (YYYY-MM-DD).
@@ -11,7 +11,7 @@ export function isGoalScheduledForDate(goal: Goal, dateStr: string): boolean {
 
   // If dateStr is before the goal was created, it was not scheduled
   if (goal.created_at) {
-    const createdDateStr = goal.created_at.split('T')[0];
+    const createdDateStr = goal.created_at.slice(0, 10);
     if (dateStr < createdDateStr) {
       return false;
     }
@@ -40,25 +40,30 @@ export function isGoalScheduledForDate(goal: Goal, dateStr: string): boolean {
 }
 
 /**
- * Derives the daily tasks list for a given date by taking active goals and week's task records.
- * Sorts derived tasks chronologically by scheduled time.
- */
-/**
  * Calculates the current completion streak (in days) for a goal leading up to or including today.
  */
-export function calculateGoalStreak(goal: Goal, tasks: DailyTask[], dateStr: string): number {
+export function calculateGoalStreak(
+  goal: Goal,
+  tasks: DailyTask[] | Map<string, DailyTask>,
+  dateStr: string
+): number {
   if (!goal.active || goal.deleted_at) return 0;
 
-  const taskMap = new Map<string, DailyTask>();
-  for (const t of tasks) {
-    if (t.goal_id === goal.id) {
-      taskMap.set(t.date, t);
+  let taskMap: Map<string, DailyTask>;
+  if (tasks instanceof Map) {
+    taskMap = tasks;
+  } else {
+    taskMap = new Map<string, DailyTask>();
+    for (const t of tasks) {
+      if (t.goal_id === goal.id) {
+        taskMap.set(t.date, t);
+      }
     }
   }
 
   let streak = 0;
   const currentDate = new Date(dateStr + 'T00:00:00Z');
-  const goalCreatedDateStr = goal.created_at ? goal.created_at.split('T')[0] : null;
+  const goalCreatedDateStr = goal.created_at ? goal.created_at.slice(0, 10) : null;
 
   // Check today first. If completed today, count it. If pending today, check yesterday without breaking.
   const todayTask = taskMap.get(dateStr);
@@ -76,7 +81,7 @@ export function calculateGoalStreak(goal: Goal, tasks: DailyTask[], dateStr: str
     daysChecked++;
     if (daysChecked > 365) break;
 
-    const dStr = currentDate.toISOString().split('T')[0];
+    const dStr = formatUTCDateStr(currentDate);
 
     // Stop if date is before the goal was created
     if (goalCreatedDateStr && dStr < goalCreatedDateStr) {
@@ -107,15 +112,20 @@ export function calculateGoalStreak(goal: Goal, tasks: DailyTask[], dateStr: str
  */
 export function calculateConsecutiveMisses(
   goal: Goal,
-  tasks: DailyTask[],
+  tasks: DailyTask[] | Map<string, DailyTask>,
   todayDateStr: string
 ): { count: number; message: string | null } {
   if (!goal.active || goal.deleted_at) return { count: 0, message: null };
 
-  const taskMap = new Map<string, DailyTask>();
-  for (const t of tasks) {
-    if (t.goal_id === goal.id) {
-      taskMap.set(t.date, t);
+  let taskMap: Map<string, DailyTask>;
+  if (tasks instanceof Map) {
+    taskMap = tasks;
+  } else {
+    taskMap = new Map<string, DailyTask>();
+    for (const t of tasks) {
+      if (t.goal_id === goal.id) {
+        taskMap.set(t.date, t);
+      }
     }
   }
 
@@ -124,10 +134,10 @@ export function calculateConsecutiveMisses(
   // Start checking from yesterday
   currentDate.setUTCDate(currentDate.getUTCDate() - 1);
 
-  const goalCreatedDateStr = goal.created_at ? goal.created_at.split('T')[0] : '1970-01-01';
+  const goalCreatedDateStr = goal.created_at ? goal.created_at.slice(0, 10) : '1970-01-01';
 
   while (true) {
-    const dStr = currentDate.toISOString().split('T')[0];
+    const dStr = formatUTCDateStr(currentDate);
 
     // Stop if date is before the goal was created
     if (dStr < goalCreatedDateStr) {
@@ -181,14 +191,14 @@ export function getMissingPastTaskPayloads(
   for (const goal of goals) {
     if (!goal.active || goal.deleted_at) continue;
 
-    const goalCreatedDateStr = goal.created_at ? goal.created_at.split('T')[0] : todayDateStr;
+    const goalCreatedDateStr = goal.created_at ? goal.created_at.slice(0, 10) : todayDateStr;
     const currentDate = new Date(todayDateStr + 'T00:00:00Z');
     currentDate.setUTCDate(currentDate.getUTCDate() - 1);
 
     // Limit check to last 30 days or goal creation date
     let daysChecked = 0;
     while (daysChecked < 30) {
-      const dStr = currentDate.toISOString().split('T')[0];
+      const dStr = formatUTCDateStr(currentDate);
       if (dStr < goalCreatedDateStr) break;
 
       if (isGoalScheduledForDate(goal, dStr)) {
@@ -234,6 +244,8 @@ export function deriveDailyTasks(
   const todayTaskMap = new Map<string, DailyTask>();
   // Map weekly completed count per goal
   const weeklyCompletedCountMap = new Map<string, number>();
+  // Map tasks pre-indexed by goal_id -> (date -> task) for O(1) streak calculations
+  const tasksByGoalMap = new Map<string, Map<string, DailyTask>>();
 
   for (const task of weekTasks) {
     if (task.date >= startOfWeek && task.date <= endOfWeek && task.status === 'completed') {
@@ -243,6 +255,13 @@ export function deriveDailyTasks(
     if (task.date === dateStr) {
       todayTaskMap.set(task.goal_id, task);
     }
+
+    let gMap = tasksByGoalMap.get(task.goal_id);
+    if (!gMap) {
+      gMap = new Map<string, DailyTask>();
+      tasksByGoalMap.set(task.goal_id, gMap);
+    }
+    gMap.set(task.date, task);
   }
 
   const derived: DerivedTodayTask[] = [];
@@ -255,10 +274,11 @@ export function deriveDailyTasks(
     const existingTodayTask = todayTaskMap.get(goal.id) || null;
     const completedThisWeek = weeklyCompletedCountMap.get(goal.id) || 0;
 
-    const streak = calculateGoalStreak(goal, weekTasks, dateStr);
+    const goalTaskMap = tasksByGoalMap.get(goal.id) || new Map<string, DailyTask>();
+    const streak = calculateGoalStreak(goal, goalTaskMap, dateStr);
     const { count: consecutiveMisses, message: consecutiveMissMessage } = calculateConsecutiveMisses(
       goal,
-      weekTasks,
+      goalTaskMap,
       dateStr
     );
 
