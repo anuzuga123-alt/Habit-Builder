@@ -144,7 +144,7 @@ export function calculateConsecutiveMisses(
   if (count === 1) {
     message = 'You missed yesterday. Get back today.';
   } else if (count === 2) {
-    message = "Two days in a row is a habit. Don't break the chain today!";
+    message = 'Two days in a row is becoming a habit. Get back today.';
   } else if (count >= 3) {
     message = `${count}+ missed days in a row. Let's make today a small win!`;
   }
