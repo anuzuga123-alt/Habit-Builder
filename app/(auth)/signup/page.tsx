@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { getURL } from '@/lib/utils/url';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -33,6 +34,7 @@ export default function SignupPage() {
         email,
         password,
         options: {
+          emailRedirectTo: `${getURL()}/api/auth/callback`,
           data: {
             display_name: displayName,
             timezone: timezone,

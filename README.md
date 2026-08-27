@@ -16,12 +16,14 @@ Copy `.env.example` to `.env.local` and configure the required environment varia
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+NEXT_PUBLIC_SITE_URL=https://habit-builder-alpha.vercel.app
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 CRON_SECRET=your-vercel-cron-secret # Optional: Secures /api/reminders/check endpoint
 ```
 
 - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL (Public client-side variable).
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase public anonymous API key (Public client-side variable).
+- `NEXT_PUBLIC_SITE_URL`: Recommended explicit production site URL for email auth confirmation redirects (e.g. `https://habit-builder-alpha.vercel.app`). Falls back to `NEXT_PUBLIC_VERCEL_URL` or `http://localhost:3000` when not provided.
 - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key (Server-only secret required for server-side reminder checks across users). **Do NOT expose as a public variable.**
 - `CRON_SECRET`: Optional authorization secret used when securing `/api/reminders/check` invocations.
 
@@ -60,6 +62,7 @@ npm run build
 2. Configure Environment Variables in project settings:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `NEXT_PUBLIC_SITE_URL` (Recommended explicit production URL, e.g. `https://habit-builder-alpha.vercel.app`)
    - `SUPABASE_SERVICE_ROLE_KEY` (Server-only secret)
    - `CRON_SECRET` (Optional/Recommended)
 3. Deploy the project on Vercel. Note: The application does not depend on a Vercel cron job. Daily habit reminders are dynamically evaluated client-side, while the `/api/reminders/check` endpoint remains available for manual or on-demand invocation if needed.
