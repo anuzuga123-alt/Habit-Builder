@@ -58,6 +58,7 @@ export function calculateGoalStreak(goal: Goal, tasks: DailyTask[], dateStr: str
 
   let streak = 0;
   const currentDate = new Date(dateStr + 'T00:00:00Z');
+  const goalCreatedDateStr = goal.created_at ? goal.created_at.split('T')[0] : null;
 
   // Check today first. If completed today, count it. If pending today, check yesterday without breaking.
   const todayTask = taskMap.get(dateStr);
@@ -69,9 +70,18 @@ export function calculateGoalStreak(goal: Goal, tasks: DailyTask[], dateStr: str
     currentDate.setUTCDate(currentDate.getUTCDate() - 1);
   }
 
+  let daysChecked = 0;
   // Count backwards past days
   while (true) {
+    daysChecked++;
+    if (daysChecked > 365) break;
+
     const dStr = currentDate.toISOString().split('T')[0];
+
+    // Stop if date is before the goal was created
+    if (goalCreatedDateStr && dStr < goalCreatedDateStr) {
+      break;
+    }
 
     // Check if goal was scheduled for this past date
     if (isGoalScheduledForDate(goal, dStr)) {
