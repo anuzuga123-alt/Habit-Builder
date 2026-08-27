@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Profile } from '@/lib/types';
+import { HabitAlarmsControl } from '@/components/habit-alarms-control';
 
 interface ProfileClientProps {
   profile: Profile;
@@ -144,6 +145,9 @@ export function ProfileClient({ profile, email }: ProfileClientProps) {
           </button>
         </div>
       </form>
+
+      {/* Habit Alarms Permission & Sound Control */}
+      <HabitAlarmsControl />
     </div>
   );
 }
