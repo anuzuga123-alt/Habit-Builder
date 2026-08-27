@@ -95,7 +95,6 @@ export function GoalForm({ initialGoal, userId }: GoalFormProps) {
       }
 
       router.push('/');
-      router.refresh();
     } catch (err: unknown) {
       const errorObj = err as { message?: string };
       setError(errorObj.message || 'Failed to save goal.');

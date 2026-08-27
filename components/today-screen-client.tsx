@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Goal, DailyTask, DerivedTodayTask } from '@/lib/types';
 import { deriveDailyTasks, getMissingPastTaskPayloads } from '@/lib/utils/tasks';
 import { evaluateGoalReminders, ActiveReminder } from '@/lib/utils/reminders';
@@ -28,17 +28,42 @@ export function TodayScreenClient({
   userTimezone = 'UTC',
 }: TodayScreenClientProps) {
   const [persistedTasks, setPersistedTasks] = useState<DailyTask[]>(initialPersistedTasks);
+  const [prevInitialTasks, setPrevInitialTasks] = useState<DailyTask[]>(initialPersistedTasks);
   const [loadingTaskId, setLoadingTaskId] = useState<string | null>(null);
 
   // Proof Modal State
   const [proofModalTask, setProofModalTask] = useState<DerivedTodayTask | null>(null);
   const [proofUrlInput, setProofUrlInput] = useState('');
 
-  // Detect missed days on mount and sync to daily_tasks
-  useEffect(() => {
-    const missingPayloads = getMissingPastTaskPayloads(goals, persistedTasks, dateStr);
-    if (missingPayloads.length === 0) return;
+  // Sync state during render if initialPersistedTasks prop changes
+  if (prevInitialTasks !== initialPersistedTasks) {
+    setPrevInitialTasks(initialPersistedTasks);
+    setPersistedTasks(initialPersistedTasks);
+  }
 
+  const persistedTasksRef = useRef(persistedTasks);
+  useEffect(() => {
+    persistedTasksRef.current = persistedTasks;
+  }, [persistedTasks]);
+
+  const hasSyncedRef = useRef(false);
+
+  // Reset sync flag if goals or dateStr changes
+  useEffect(() => {
+    hasSyncedRef.current = false;
+  }, [goals, dateStr]);
+
+  // Detect missed days on mount/goals update and sync to daily_tasks exactly once per load
+  useEffect(() => {
+    if (hasSyncedRef.current) return;
+
+    const missingPayloads = getMissingPastTaskPayloads(goals, persistedTasksRef.current, dateStr);
+    if (missingPayloads.length === 0) {
+      hasSyncedRef.current = true;
+      return;
+    }
+
+    hasSyncedRef.current = true;
     const syncMissedTasks = async () => {
       try {
         const supabase = createClient();
@@ -62,7 +87,7 @@ export function TodayScreenClient({
     };
 
     syncMissedTasks();
-  }, [goals, dateStr, persistedTasks]);
+  }, [goals, dateStr]);
 
   const activeReminders: ActiveReminder[] = evaluateGoalReminders(
     goals,
