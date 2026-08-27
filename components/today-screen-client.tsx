@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Goal, DailyTask, DerivedTodayTask } from '@/lib/types';
 import { deriveDailyTasks, getMissingPastTaskPayloads } from '@/lib/utils/tasks';
 import { evaluateGoalReminders, ActiveReminder } from '@/lib/utils/reminders';
@@ -32,7 +32,6 @@ export function TodayScreenClient({
 }: TodayScreenClientProps) {
   const [persistedTasks, setPersistedTasks] = useState<DailyTask[]>(initialPersistedTasks);
   const [prevInitialTasks, setPrevInitialTasks] = useState<DailyTask[]>(initialPersistedTasks);
-  const [loadingTaskId, setLoadingTaskId] = useState<string | null>(null);
 
   // Proof Modal State
   const [proofModalTask, setProofModalTask] = useState<DerivedTodayTask | null>(null);
@@ -92,11 +91,9 @@ export function TodayScreenClient({
     syncMissedTasks();
   }, [goals, dateStr]);
 
-  const activeReminders: ActiveReminder[] = evaluateGoalReminders(
-    goals,
-    persistedTasks,
-    dateStr,
-    userTimezone
+  const activeReminders: ActiveReminder[] = useMemo(
+    () => evaluateGoalReminders(goals, persistedTasks, dateStr, userTimezone),
+    [goals, persistedTasks, dateStr, userTimezone]
   );
 
   const [dismissedReminders, setDismissedReminders] = useState<Set<string>>(new Set());
@@ -136,7 +133,10 @@ export function TodayScreenClient({
 
   const visibleReminders = activeReminders.filter((rem) => !dismissedReminders.has(rem.goalId));
 
-  const derivedTasks = deriveDailyTasks(goals, persistedTasks, dateStr);
+  const derivedTasks = useMemo(
+    () => deriveDailyTasks(goals, persistedTasks, dateStr),
+    [goals, persistedTasks, dateStr]
+  );
 
   const completedCount = derivedTasks.filter((t) => t.status === 'completed').length;
   const totalCount = derivedTasks.length;

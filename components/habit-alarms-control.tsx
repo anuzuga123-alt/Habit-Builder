@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   checkNotificationPermission,
   requestNotificationPermission,
@@ -15,24 +15,16 @@ interface HabitAlarmsControlProps {
 }
 
 export function HabitAlarmsControl({ className = '', compact = false }: HabitAlarmsControlProps) {
-  const [permState, setPermState] = useState<NotificationPermissionState>({
-    supported: true,
-    permission: 'default',
-  });
-  const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [permState, setPermState] = useState<NotificationPermissionState>(() =>
+    checkNotificationPermission()
+  );
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const state = checkNotificationPermission();
-    setPermState(state);
-  }, []);
 
   const handleEnable = async () => {
     setLoading(true);
 
     // 1. Unlock Web Audio Context via user gesture
-    const unlocked = unlockAudioContext();
-    setAudioUnlocked(unlocked);
+    unlockAudioContext();
 
     // 2. Request browser notification permission
     const newState = await requestNotificationPermission();
