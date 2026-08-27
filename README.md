@@ -22,8 +22,8 @@ CRON_SECRET=your-vercel-cron-secret # Optional: Secures /api/reminders/check end
 
 - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL (Public client-side variable).
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase public anonymous API key (Public client-side variable).
-- `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key (Server-only secret required for automated cron execution to check reminders across users). **Do NOT expose as a public variable.**
-- `CRON_SECRET`: Optional authorization secret used by Vercel Cron to invoke `/api/reminders/check` securely.
+- `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key (Server-only secret required for server-side reminder checks across users). **Do NOT expose as a public variable.**
+- `CRON_SECRET`: Optional authorization secret used when securing `/api/reminders/check` invocations.
 
 ## Database Setup
 
@@ -62,4 +62,4 @@ npm run build
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY` (Server-only secret)
    - `CRON_SECRET` (Optional/Recommended)
-3. Deploy the project. Vercel will automatically read `vercel.json` and configure Vercel Cron for `/api/reminders/check`.
+3. Deploy the project on Vercel. Note: The application does not depend on a Vercel cron job. Daily habit reminders are dynamically evaluated client-side, while the `/api/reminders/check` endpoint remains available for manual or on-demand invocation if needed.
